@@ -38,11 +38,11 @@ jobs:
         
     - name: Build win-x86 framework-dependent (Single File)
       run: |
-        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x86 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x86-fd
+        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x86 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=false -p:EnableCompressionInSingleFile=false -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x86-fd
         
     - name: Build win-x64 framework-dependent (Single File)
       run: |
-        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x64-fd
+        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=false -p:EnableCompressionInSingleFile=false -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x64-fd
         
     - name: Create artifacts directory and prepare files
       shell: pwsh
@@ -67,13 +67,21 @@ jobs:
             # Copy exe file to artifacts with descriptive name
             $exePath = Join-Path $dir.Source 'Ntk.Tools.AutoType.exe'
             if (Test-Path $exePath) {
+              $file = Get-Item $exePath
+              $sizeMB = [math]::Round($file.Length / 1MB, 2)
               Copy-Item -Path $exePath -Destination "./artifacts/$($dir.Dest)" -Force
-              Write-Host "Copied $($dir.Dest)"
+              Write-Host "Copied $($dir.Dest) - Size: $sizeMB MB"
             }
           }
         }
         
-        Write-Host "Artifacts prepared successfully"
+        Write-Host "`n=== File Sizes Summary ==="
+        Get-ChildItem ./artifacts -File | ForEach-Object {
+          $sizeMB = [math]::Round($_.Length / 1MB, 2)
+          Write-Host "$($_.Name): $sizeMB MB"
+        }
+        
+        Write-Host "`nArtifacts prepared successfully"
         
     - name: Get version from project
       id: get_version
@@ -132,4 +140,5 @@ jobs:
         generate_release_notes: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
