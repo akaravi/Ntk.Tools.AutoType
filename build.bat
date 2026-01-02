@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ========================================
-echo   کامپایل برنامه Ntk.AutoType
+echo   کامپایل برنامه Ntk.Tools.AutoType
 echo ========================================
 echo.
 
@@ -16,10 +16,10 @@ if errorlevel 1 (
 
 echo.
 echo ✓ کامپایل با موفقیت انجام شد!
-echo ✓ فایل اجرایی در مسیر bin\Release\ntk.autoType.exe ایجاد شد
+echo ✓ فایل اجرایی در مسیر bin\Release\Ntk.Tools.AutoType.exe ایجاد شد
 echo.
 echo برای اجرا:
-echo   bin\Release\ntk.autoType.exe "متن" ^<دقیقه^> ^<تعداد اجرا^>
+echo   bin\Release\Ntk.Tools.AutoType.exe "متن" ^<دقیقه^> ^<تعداد اجرا^>
 echo   یا
 echo   run.bat "متن" ^<دقیقه^> ^<تعداد اجرا^>
 echo.

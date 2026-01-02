@@ -5,7 +5,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>ntk.autoType</AssemblyName>
+    <AssemblyName>Ntk.Tools.AutoType</AssemblyName>
     <RootNamespace>Ntk.Tools.AutoType</RootNamespace>
     <Version>1.0.0</Version>
     <Authors>NTK</Authors>

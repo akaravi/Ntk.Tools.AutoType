@@ -135,7 +135,7 @@ dotnet build -c Release
 
 ```bash
 # اجرای برنامه بدون پارامتر
-ntk.autoType.exe
+Ntk.Tools.AutoType.exe
 ```
 
 برنامه از شما سه مقدار را خط به خط می‌پرسد:
@@ -153,7 +153,7 @@ Enter number of executions (0 for unlimited): 10
 ### روش 2: استفاده از پارامترهای خط فرمان
 
 ```bash
-ntk.autoType.exe <text|filename> <minutes> <maxExecutions>
+Ntk.Tools.AutoType.exe <text|filename> <minutes> <maxExecutions>
 ```
 
 **پارامترها:**
@@ -165,13 +165,13 @@ ntk.autoType.exe <text|filename> <minutes> <maxExecutions>
 
 ```bash
 # تایپ "سلام دنیا" هر 5 دقیقه، 10 بار
-ntk.autoType.exe "سلام دنیا" 5 10
+Ntk.Tools.AutoType.exe "سلام دنیا" 5 10
 
 # تایپ "ادامه بده" هر 2 دقیقه، نامحدود
-ntk.autoType.exe "ادامه بده" 2 0
+Ntk.Tools.AutoType.exe "ادامه بده" 2 0
 
 # استفاده از فایل
-ntk.autoType.exe message.txt 3 5
+Ntk.Tools.AutoType.exe message.txt 3 5
 ```
 
 ### استفاده از فایل متنی
@@ -183,7 +183,7 @@ ntk.autoType.exe message.txt 3 5
 echo "متن مورد نظر" > message.txt
 
 # استفاده از فایل
-ntk.autoType.exe message.txt 5 10
+Ntk.Tools.AutoType.exe message.txt 5 10
 ```
 
 **نکات:**
@@ -199,7 +199,7 @@ ntk.autoType.exe message.txt 5 10
 
 ```bash
 # تایپ "ادامه بده" هر 2 دقیقه، نامحدود
-ntk.autoType.exe "ادامه بده" 2 0
+Ntk.Tools.AutoType.exe "ادامه بده" 2 0
 ```
 
 ### مثال 2: تایپ متن طولانی از فایل
@@ -209,14 +209,14 @@ ntk.autoType.exe "ادامه بده" 2 0
 # این یک متن طولانی است که می‌خواهم به صورت خودکار تایپ شود.
 
 # اجرا
-ntk.autoType.exe message.txt 10 5
+Ntk.Tools.AutoType.exe message.txt 10 5
 ```
 
 ### مثال 3: تایپ با تعداد محدود
 
 ```bash
 # تایپ "تست" هر 1 دقیقه، 20 بار
-ntk.autoType.exe "تست" 1 20
+Ntk.Tools.AutoType.exe "تست" 1 20
 ```
 
 ---
