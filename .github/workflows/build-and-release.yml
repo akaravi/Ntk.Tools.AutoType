@@ -28,50 +28,52 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
       
-    - name: Build win-x86 self-contained
+    - name: Build win-x86 self-contained (Single File)
       run: |
-        dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=false -o ./publish/win-x86-self-contained
+        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x86
         
-    - name: Build win-x64 self-contained
+    - name: Build win-x64 self-contained (Single File)
       run: |
-        dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o ./publish/win-x64-self-contained
+        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x64
         
-    - name: Build win-x86 framework-dependent
+    - name: Build win-x86 framework-dependent (Single File)
       run: |
-        dotnet publish -c Release -r win-x86 --self-contained false -o ./publish/win-x86-framework-dependent
+        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x86 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x86-fd
         
-    - name: Build win-x64 framework-dependent
+    - name: Build win-x64 framework-dependent (Single File)
       run: |
-        dotnet publish -c Release -r win-x64 --self-contained false -o ./publish/win-x64-framework-dependent
+        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x64-fd
         
-    - name: Create artifacts directory
+    - name: Create artifacts directory and prepare files
       shell: pwsh
       run: |
         New-Item -ItemType Directory -Force -Path ./artifacts | Out-Null
         
-    - name: Create ZIP archives
-      shell: pwsh
-      run: |
-        # Create ZIP files preserving directory structure
-        $compressParams = @{
-          Path = './publish/win-x86-self-contained'
-          DestinationPath = './artifacts/win-x86-self-contained.zip'
-          CompressionLevel = 'Optimal'
-          Force = $true
+        # Clean up extra files from each build directory and copy exe files to artifacts
+        $buildDirs = @(
+          @{Source='./publish/win-x86'; Dest='win-x86-self-contained.exe'},
+          @{Source='./publish/win-x64'; Dest='win-x64-self-contained.exe'},
+          @{Source='./publish/win-x86-fd'; Dest='win-x86-framework-dependent.exe'},
+          @{Source='./publish/win-x64-fd'; Dest='win-x64-framework-dependent.exe'}
+        )
+        
+        foreach ($dir in $buildDirs) {
+          if (Test-Path $dir.Source) {
+            # Remove extra files, keep only .exe
+            Get-ChildItem -Path $dir.Source -File | Where-Object { $_.Extension -ne '.exe' } | Remove-Item -Force
+            # Remove subdirectories
+            Get-ChildItem -Path $dir.Source -Directory | Remove-Item -Recurse -Force
+            
+            # Copy exe file to artifacts with descriptive name
+            $exePath = Join-Path $dir.Source 'Ntk.Tools.AutoType.exe'
+            if (Test-Path $exePath) {
+              Copy-Item -Path $exePath -Destination "./artifacts/$($dir.Dest)" -Force
+              Write-Host "Copied $($dir.Dest)"
+            }
+          }
         }
-        Compress-Archive @compressParams
         
-        $compressParams.DestinationPath = './artifacts/win-x64-self-contained.zip'
-        $compressParams.Path = './publish/win-x64-self-contained'
-        Compress-Archive @compressParams
-        
-        $compressParams.DestinationPath = './artifacts/win-x86-framework-dependent.zip'
-        $compressParams.Path = './publish/win-x86-framework-dependent'
-        Compress-Archive @compressParams
-        
-        $compressParams.DestinationPath = './artifacts/win-x64-framework-dependent.zip'
-        $compressParams.Path = './publish/win-x64-framework-dependent'
-        Compress-Archive @compressParams
+        Write-Host "Artifacts prepared successfully"
         
     - name: Get version from project
       id: get_version
@@ -101,15 +103,17 @@ jobs:
         body: |
           ## نسخه ${{ steps.get_version.outputs.version }}
           
-          این نسخه شامل 4 نسخه مختلف برای دانلود است:
+          این نسخه شامل 4 نسخه مختلف برای دانلود است (همه به صورت Single File):
           
-          - **win-x86 self-contained**: نسخه مستقل برای Windows x86 (نیاز به نصب .NET ندارد)
+          - **win-x86 self-contained**: نسخه مستقل تک فایلی برای Windows x86 (نیاز به نصب .NET ندارد)
           
-          - **win-x64 self-contained**: نسخه مستقل برای Windows x64 (نیاز به نصب .NET ندارد)
+          - **win-x64 self-contained**: نسخه مستقل تک فایلی برای Windows x64 (نیاز به نصب .NET ندارد)
           
-          - **win-x86 framework-dependent**: نسخه وابسته به .NET Framework برای Windows x86
+          - **win-x86 framework-dependent**: نسخه وابسته به .NET تک فایلی برای Windows x86 (نیاز به نصب .NET 8.0 Runtime دارد)
           
-          - **win-x64 framework-dependent**: نسخه وابسته به .NET Framework برای Windows x64
+          - **win-x64 framework-dependent**: نسخه وابسته به .NET تک فایلی برای Windows x64 (نیاز به نصب .NET 8.0 Runtime دارد)
+          
+          **نکته**: همه نسخه‌ها به صورت Single File هستند و مستقیماً به صورت فایل اجرایی (.exe) قابل دانلود می‌باشند.
           
           ### تغییرات
           
@@ -119,10 +123,10 @@ jobs:
           
           - تاریخ: ${{ github.event.head_commit.timestamp }}
         files: |
-          ./artifacts/win-x86-self-contained.zip
-          ./artifacts/win-x64-self-contained.zip
-          ./artifacts/win-x86-framework-dependent.zip
-          ./artifacts/win-x64-framework-dependent.zip
+          ./artifacts/win-x86-self-contained.exe
+          ./artifacts/win-x64-self-contained.exe
+          ./artifacts/win-x86-framework-dependent.exe
+          ./artifacts/win-x64-framework-dependent.exe
         draft: false
         prerelease: false
         generate_release_notes: false

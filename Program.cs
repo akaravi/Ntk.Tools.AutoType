@@ -5,6 +5,10 @@ namespace Ntk.Tools.AutoType
 {
     class Program
     {
+        private static NotifyIcon? notifyIcon;
+        private static DateTime? nextExecutionTime;
+        private static ApplicationContext? appContext;
+        private static Icon? appIcon;
         [DllImport("user32.dll")]
         static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
@@ -124,6 +128,29 @@ namespace Ntk.Tools.AutoType
             Console.WriteLine("Press P or Space to pause/resume the program");
             Console.WriteLine("\nStarting in 5 seconds...");
 
+            // Initialize System Tray in a separate thread with Windows Forms context
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    // Create Windows Forms Application Context for NotifyIcon
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    
+                    InitializeSystemTray();
+                    
+                    // Create application context
+                    appContext = new ApplicationContext();
+                    
+                    // Keep the application context alive
+                    Application.Run(appContext);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Error in system tray thread: {ex.Message}");
+                }
+            });
+
             // Setup Ctrl+C handler
             Console.CancelKeyPress += (sender, e) =>
             {
@@ -146,6 +173,9 @@ namespace Ntk.Tools.AutoType
             // Start keyboard listener task
             var keyboardTask = KeyboardListenerAsync(cancellationToken);
 
+            // Start tooltip updater task
+            var tooltipUpdaterTask = UpdateTooltipAsync(cancellationToken);
+
             int sleepMillis = sleepMinutes * 60 * 1000; // Convert minutes to milliseconds
 
             try
@@ -164,6 +194,205 @@ namespace Ntk.Tools.AutoType
             {
                 cancellationTokenSource.Cancel();
                 await keyboardTask;
+                await tooltipUpdaterTask;
+                CleanupSystemTray();
+            }
+        }
+
+        private static Icon CreateApplicationIcon()
+        {
+            // Create a custom icon for the application
+            Bitmap bitmap = new Bitmap(32, 32);
+            Graphics graphics = Graphics.FromImage(bitmap);
+            
+            try
+            {
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                graphics.Clear(Color.Transparent);
+                
+                // Draw background with gradient (blue to darker blue)
+                using (var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
+                    new Rectangle(0, 0, 32, 32),
+                    Color.FromArgb(0, 120, 215),
+                    Color.FromArgb(0, 80, 160),
+                    System.Drawing.Drawing2D.LinearGradientMode.Vertical))
+                {
+                    graphics.FillEllipse(brush, 0, 0, 32, 32);
+                }
+                
+                // Draw border
+                graphics.DrawEllipse(new Pen(Color.FromArgb(0, 60, 120), 2), 1, 1, 30, 30);
+                
+                // Draw keyboard/type icon - "AT" text
+                using (Font font = new Font("Segoe UI", 12, FontStyle.Bold))
+                {
+                    var textRect = new RectangleF(2, 8, 28, 16);
+                    graphics.DrawString("AT", font, Brushes.White, textRect);
+                }
+                
+                // Convert bitmap to icon
+                IntPtr hIcon = bitmap.GetHicon();
+                Icon icon = Icon.FromHandle(hIcon);
+                
+                // Create a copy to avoid handle issues
+                Icon clonedIcon = (Icon)icon.Clone();
+                return clonedIcon;
+            }
+            finally
+            {
+                graphics.Dispose();
+                bitmap.Dispose();
+            }
+        }
+
+        private static void InitializeSystemTray()
+        {
+            try
+            {
+                // Create custom application icon
+                appIcon = CreateApplicationIcon();
+                
+                // Create NotifyIcon
+                notifyIcon = new NotifyIcon
+                {
+                    Icon = appIcon,
+                    Text = "Ntk.Tools.AutoType - Auto Type Program",
+                    Visible = true
+                };
+
+                // Create Context Menu
+                ContextMenuStrip contextMenu = new ContextMenuStrip();
+                
+                ToolStripMenuItem pauseResumeItem = new ToolStripMenuItem("Pause/Resume (P)")
+                {
+                    Name = "pauseResume"
+                };
+                pauseResumeItem.Click += (s, e) =>
+                {
+                    // Run async method synchronously in UI thread
+                    Task.Run(async () => await TogglePauseAsync());
+                };
+                contextMenu.Items.Add(pauseResumeItem);
+
+                contextMenu.Items.Add(new ToolStripSeparator());
+
+                ToolStripMenuItem showInfoItem = new ToolStripMenuItem("Show Info")
+                {
+                    Name = "showInfo"
+                };
+                showInfoItem.Click += (s, e) => ShowNotification();
+                contextMenu.Items.Add(showInfoItem);
+
+                contextMenu.Items.Add(new ToolStripSeparator());
+
+                ToolStripMenuItem exitItem = new ToolStripMenuItem("Exit")
+                {
+                    Name = "exit"
+                };
+                exitItem.Click += (s, e) =>
+                {
+                    cancellationTokenSource.Cancel();
+                    pauseEvent.Set();
+                    CleanupSystemTray();
+                    Environment.Exit(0);
+                };
+                contextMenu.Items.Add(exitItem);
+
+                notifyIcon.ContextMenuStrip = contextMenu;
+                notifyIcon.MouseClick += (s, e) =>
+                {
+                    if (e.Button == MouseButtons.Left)
+                    {
+                        ShowNotification();
+                    }
+                };
+
+                // Show initial notification
+                ShowNotification("Auto Type Program Started", 
+                    $"Program is running in system tray.\nNext execution will be in {sleepMinutes} minutes.");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error initializing system tray: {ex.Message}");
+                Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        private static void CleanupSystemTray()
+        {
+            try
+            {
+                if (notifyIcon != null)
+                {
+                    notifyIcon.Visible = false;
+                    notifyIcon.Dispose();
+                    notifyIcon = null;
+                }
+
+                if (appIcon != null)
+                {
+                    appIcon.Dispose();
+                    appIcon = null;
+                }
+
+                if (appContext != null)
+                {
+                    Application.ExitThread();
+                    appContext.Dispose();
+                    appContext = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error cleaning up system tray: {ex.Message}");
+            }
+        }
+
+        private static void ShowNotification(string? title = null, string? message = null)
+        {
+            if (notifyIcon == null) return;
+
+            try
+            {
+                if (string.IsNullOrEmpty(title))
+                {
+                    title = "Ntk.Tools.AutoType";
+                }
+
+                if (string.IsNullOrEmpty(message))
+                {
+                    string status = isPaused ? "⏸ PAUSED" : "▶ RUNNING";
+                    string maxExecText = maxExecutions == 0 ? "Unlimited" : $"{maxExecutions}";
+                    string nextExecInfo = nextExecutionTime.HasValue 
+                        ? $"Next execution: {nextExecutionTime.Value:HH:mm:ss}"
+                        : "Calculating next execution...";
+
+                    message = $"Status: {status}\n" +
+                             $"Execution: {currentExecution}/{maxExecText}\n" +
+                             $"Interval: {sleepMinutes} minutes\n" +
+                             $"{nextExecInfo}";
+                }
+
+            notifyIcon.BalloonTipTitle = title;
+            notifyIcon.BalloonTipText = message;
+            notifyIcon.BalloonTipIcon = isPaused ? ToolTipIcon.Warning : ToolTipIcon.Info;
+            
+            // Set custom icon if available
+            if (appIcon != null)
+            {
+                notifyIcon.Icon = appIcon;
+            }
+            
+            notifyIcon.ShowBalloonTip(5000); // Show for 5 seconds
+
+            // Update tooltip with icon info
+            string tooltipText = $"Ntk.Tools.AutoType\n{message.Replace("\n", " | ")}";
+            notifyIcon.Text = tooltipText;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error showing notification: {ex.Message}");
             }
         }
 
@@ -193,6 +422,15 @@ namespace Ntk.Tools.AutoType
 
                     string maxExecText = maxExecutions == 0 ? "Unlimited" : maxExecutions.ToString();
                     Console.WriteLine($"Typing completed. ({currentExecution}/{maxExecText}) Waiting {sleepMinutes} minutes...");
+                    
+                    // Calculate and set next execution time
+                    nextExecutionTime = DateTime.Now.AddMilliseconds(sleepMillis);
+                    
+                    // Show notification with next execution time
+                    ShowNotification("Typing Completed", 
+                        $"Execution #{currentExecution} completed.\n" +
+                        $"Next execution: {nextExecutionTime.Value:HH:mm:ss}\n" +
+                        $"({sleepMinutes} minutes from now)");
                     
                     // Sleep with pause support
                     await SleepWithPauseAsync(sleepMillis, cancellationToken);
@@ -425,12 +663,40 @@ namespace Ntk.Tools.AutoType
                 // Pause: reset event (will block MainLoopAsync)
                 pauseEvent.Reset();
                 Console.WriteLine($"\n[PAUSED] Program paused at {DateTime.Now:HH:mm:ss}. Press P or Space to resume.");
+                ShowNotification("Program Paused", 
+                    $"Program is paused.\n" +
+                    $"Current execution: {currentExecution}\n" +
+                    $"Press P or Space to resume.");
             }
             else
             {
                 // Resume: set event (will unblock MainLoopAsync)
                 pauseEvent.Set();
                 Console.WriteLine($"\n[RESUMED] Program resumed at {DateTime.Now:HH:mm:ss}.");
+                
+                // Recalculate next execution time
+                if (nextExecutionTime.HasValue)
+                {
+                    var remainingTime = nextExecutionTime.Value - DateTime.Now;
+                    if (remainingTime.TotalMilliseconds > 0)
+                    {
+                        ShowNotification("Program Resumed", 
+                            $"Program resumed.\n" +
+                            $"Next execution: {nextExecutionTime.Value:HH:mm:ss}\n" +
+                            $"({Math.Ceiling(remainingTime.TotalMinutes)} minutes remaining)");
+                    }
+                    else
+                    {
+                        nextExecutionTime = DateTime.Now.AddMinutes(sleepMinutes);
+                        ShowNotification("Program Resumed", 
+                            $"Program resumed.\n" +
+                            $"Next execution: {nextExecutionTime.Value:HH:mm:ss}");
+                    }
+                }
+                else
+                {
+                    ShowNotification("Program Resumed", "Program resumed.");
+                }
             }
             
             return Task.CompletedTask;
@@ -453,6 +719,41 @@ namespace Ntk.Tools.AutoType
                 {
                     await Task.Delay(checkInterval, cancellationToken);
                     elapsed += checkInterval;
+                }
+            }
+        }
+
+        private static async Task UpdateTooltipAsync(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(5000, cancellationToken); // Update every 5 seconds
+                    
+                    if (notifyIcon != null && !isPaused && nextExecutionTime.HasValue)
+                    {
+                        var remainingTime = nextExecutionTime.Value - DateTime.Now;
+                        if (remainingTime.TotalMilliseconds > 0)
+                        {
+                            string status = isPaused ? "⏸ PAUSED" : "▶ RUNNING";
+                            string maxExecText = maxExecutions == 0 ? "Unlimited" : $"{maxExecutions}";
+                            string remainingMinutes = Math.Ceiling(remainingTime.TotalMinutes).ToString();
+                            
+                            notifyIcon.Text = $"Ntk.Tools.AutoType\n" +
+                                            $"Status: {status}\n" +
+                                            $"Execution: {currentExecution}/{maxExecText}\n" +
+                                            $"Next: {nextExecutionTime.Value:HH:mm:ss} ({remainingMinutes} min)";
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch
+                {
+                    // Ignore errors
                 }
             }
         }
