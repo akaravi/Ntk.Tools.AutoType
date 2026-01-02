@@ -15,13 +15,19 @@
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
-  <!-- Single File Output Configuration for Release -->
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+  <!-- Single File Output Configuration for Release - Self-Contained -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release' AND '$(SelfContained)'=='true'">
     <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <!-- Single File Output Configuration for Release - Framework-Dependent -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release' AND '$(SelfContained)'=='false'">
+    <PublishSingleFile>true</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
