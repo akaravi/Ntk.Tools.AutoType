@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Ntk.Tools.AutoType</AssemblyName>
     <RootNamespace>Ntk.Tools.AutoType</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.1.2</Version>
     <Authors>NTK</Authors>
     <Company>NTK</Company>
     <Product>Ntk.Tools.AutoType</Product>
