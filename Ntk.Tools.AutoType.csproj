@@ -15,9 +15,10 @@
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
-  <!-- Single File Output Configuration for Release -->
+  <!-- Single File Output Configuration for Release - Default is Framework-Dependent -->
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>

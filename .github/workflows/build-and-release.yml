@@ -38,11 +38,11 @@ jobs:
         
     - name: Build win-x86 framework-dependent (Single File)
       run: |
-        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x86 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x86-fd
+        dotnet publish Ntk.Tools.AutoType.csproj -c Release -o ./publish/win-x86-fd
         
     - name: Build win-x64 framework-dependent (Single File)
       run: |
-        dotnet publish Ntk.Tools.AutoType.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/win-x64-fd
+        dotnet publish Ntk.Tools.AutoType.csproj -c Release -o ./publish/win-x64-fd
         
     - name: Create artifacts directory and prepare files
       shell: pwsh
